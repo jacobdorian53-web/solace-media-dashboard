@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Solace Media Dashboard — Jay</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a222c;
+    --panel2: #222d3a;
+    --line: #2d3a49;
+    --text: #e6edf3;
+    --muted: #8b98a9;
+    --accent: #4f9dff;
+    --green: #3fb950;
+    --amber: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  header {
+    padding: 20px 24px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    background: var(--panel);
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .progress-bar { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin: 4px 0 20px; }
+  .progress-fill { height: 100%; background: var(--green); width: 0%; transition: width .3s; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 15px; letter-spacing: .3px; display: flex; justify-content: space-between; }
+  .card h2 .count { color: var(--muted); font-weight: normal; font-size: 13px; }
+  .daily { background: var(--panel2); }
+  .task { display: flex; gap: 10px; padding: 7px 0; align-items: flex-start; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .task:last-child { border-bottom: none; }
+  .task input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
+  .task span { font-size: 14px; }
+  .task.done span { color: var(--muted); text-decoration: line-through; }
+  .q-item { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .q-item .num { color: var(--accent); font-weight: 600; }
+  .q-item .x { margin-left: auto; color: var(--muted); cursor: pointer; border: none; background: none; font-size: 16px; }
+  .q-add { display: flex; gap: 8px; margin-top: 12px; }
+  input[type=text], textarea {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 6px; padding: 8px 10px; font-size: 14px; font-family: inherit; width: 100%;
+  }
+  textarea { min-height: 80px; resize: vertical; }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: 500; white-space: nowrap;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .full { grid-column: 1 / -1; }
+  .status { font-size: 13px; color: var(--muted); }
+  .status.saved { color: var(--green); }
+  .status.dirty { color: var(--amber); }
+  .toolbar { display: flex; gap: 10px; align-items: center; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; max-width: 460px; width: 90%; }
+  .modal h3 { margin-top: 0; }
+  .modal p { color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>⚡ Solace Media Dashboard</h1>
+    <div class="sub">Jay · Media Buyer · <span id="weekOf">—</span></div>
+  </div>
+  <div class="toolbar">
+    <span class="status" id="status">Loading…</span>
+    <button id="saveBtn" disabled>Save</button>
+    <button class="ghost" id="keyBtn">🔑</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  <div class="grid">
+    <div class="card daily full">
+      <h2>Daily <span class="count" id="c-daily"></span></h2>
+      <div id="daily"></div>
+    </div>
+    <div class="card"><h2>Monday <span class="count" id="c-Monday"></span></h2><div id="Monday"></div></div>
+    <div class="card"><h2>Tuesday <span class="count" id="c-Tuesday"></span></h2><div id="Tuesday"></div></div>
+    <div class="card"><h2>Wednesday <span class="count" id="c-Wednesday"></span></h2><div id="Wednesday"></div></div>
+    <div class="card"><h2>Thursday <span class="count" id="c-Thursday"></span></h2><div id="Thursday"></div></div>
+    <div class="card"><h2>Friday <span class="count" id="c-Friday"></span></h2><div id="Friday"></div></div>
+    <div class="card full">
+      <h2>Questions for Jacob</h2>
+      <div id="questions"></div>
+      <div class="q-add">
+        <input type="text" id="qInput" placeholder="Add a question for the weekly sync…" />
+        <button id="qAdd">Add</button>
+      </div>
+    </div>
+    <div class="card full">
+      <h2>Notes / What got done this week</h2>
+      <textarea id="notes" placeholder="Log wins, blockers, anything worth noting…"></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>GitHub Access Token</h3>
+    <p>To save changes, paste a GitHub token with write access to this repo. It's stored only in <b>your browser</b>, never uploaded. Ask Jacob/Billy for the shared token, or use your own.</p>
+    <input type="text" id="tokenInput" placeholder="github_pat_… or ghp_…" />
+    <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end;">
+      <button class="ghost" id="tokenClear">Clear</button>
+      <button id="tokenSave">Save token</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const REPO = "jacobdorian53-web/solace-media-dashboard";
+const FILE = "data.json";
+const API = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
+let data = null, sha = null, dirty = false;
+
+const $ = id => document.getElementById(id);
+const tokenKey = "smd_gh_token";
+const getToken = () => localStorage.getItem(tokenKey) || "";
+
+function setStatus(msg, cls="") { const s = $("status"); s.textContent = msg; s.className = "status " + cls; }
+function markDirty() { dirty = true; $("saveBtn").disabled = false; setStatus("Unsaved changes", "dirty"); updateProgress(); }
+
+async function load() {
+  setStatus("Loading…");
+  const headers = { "Accept": "application/vnd.github.v3+json" };
+  const tk = getToken(); if (tk) headers["Authorization"] = "Bearer " + tk;
+  try {
+    const res = await fetch(API + "?t=" + Date.now(), { headers });
+    if (!res.ok) throw new Error(res.status);
+    const json = await res.json();
+    sha = json.sha;
+    data = JSON.parse(decodeURIComponent(escape(atob(json.content))));
+    render();
+    setStatus(tk ? "Loaded" : "Loaded (read-only — add token to save)", tk ? "saved" : "");
+  } catch (e) {
+    setStatus("Load failed: " + e.message);
+  }
+}
+
+function taskRow(t, onToggle) {
+  const d = document.createElement("label");
+  d.className = "task" + (t.done ? " done" : "");
+  const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = t.done;
+  cb.onchange = () => { t.done = cb.checked; d.className = "task" + (t.done ? " done" : ""); markDirty(); };
+  const sp = document.createElement("span"); sp.textContent = t.text;
+  d.appendChild(cb); d.appendChild(sp);
+  return d;
+}
+
+function renderList(id, arr) {
+  const c = $(id); c.innerHTML = "";
+  arr.forEach(t => c.appendChild(taskRow(t)));
+  const done = arr.filter(x => x.done).length;
+  const cc = $("c-" + id); if (cc) cc.textContent = `${done}/${arr.length}`;
+}
+
+function renderQuestions() {
+  const c = $("questions"); c.innerHTML = "";
+  if (!data.questions.length) { c.innerHTML = '<div style="color:var(--muted);font-size:13px;">No questions yet.</div>'; }
+  data.questions.forEach((q, i) => {
+    const row = document.createElement("div"); row.className = "q-item";
+    const num = document.createElement("span"); num.className = "num"; num.textContent = (i+1) + ".";
+    const txt = document.createElement("span"); txt.textContent = q; txt.style.flex = "1";
+    const x = document.createElement("button"); x.className = "x"; x.textContent = "×";
+    x.onclick = () => { data.questions.splice(i,1); renderQuestions(); markDirty(); };
+    row.appendChild(num); row.appendChild(txt); row.appendChild(x);
+    c.appendChild(row);
+  });
+}
+
+function render() {
+  $("weekOf").textContent = data.weekOf || "";
+  renderList("daily", data.daily);
+  ["Monday","Tuesday","Wednesday","Thursday","Friday"].forEach(d => renderList(d, data.days[d]));
+  renderQuestions();
+  $("notes").value = data.notes || "";
+  updateProgress();
+}
+
+function updateProgress() {
+  let total = 0, done = 0;
+  const all = [data.daily, ...Object.values(data.days)];
+  all.forEach(arr => arr.forEach(t => { total++; if (t.done) done++; }));
+  $("progress").style.width = total ? (done/total*100) + "%" : "0%";
+}
+
+async function save() {
+  const tk = getToken();
+  if (!tk) { $("modalBg").style.display = "flex"; return; }
+  setStatus("Saving…");
+  $("saveBtn").disabled = true;
+  data.notes = $("notes").value;
+  const body = {
+    message: "Update dashboard — " + new Date().toISOString(),
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))),
+    sha: sha
+  };
+  try {
+    const res = await fetch(API, {
+      method: "PUT",
+      headers: { "Authorization": "Bearer " + tk, "Accept": "application/vnd.github.v3+json" },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { const er = await res.json(); throw new Error(er.message || res.status); }
+    const json = await res.json(); sha = json.content.sha;
+    dirty = false; setStatus("Saved ✓", "saved");
+  } catch (e) {
+    setStatus("Save failed: " + e.message); $("saveBtn").disabled = false;
+  }
+}
+
+$("saveBtn").onclick = save;
+$("qAdd").onclick = () => {
+  const v = $("qInput").value.trim(); if (!v) return;
+  data.questions.push(v); $("qInput").value = ""; renderQuestions(); markDirty();
+};
+$("qInput").addEventListener("keydown", e => { if (e.key === "Enter") $("qAdd").click(); });
+$("notes").addEventListener("input", markDirty);
+$("keyBtn").onclick = () => { $("tokenInput").value = getToken(); $("modalBg").style.display = "flex"; };
+$("tokenSave").onclick = () => {
+  const v = $("tokenInput").value.trim();
+  if (v) localStorage.setItem(tokenKey, v); else localStorage.removeItem(tokenKey);
+  $("modalBg").style.display = "none"; load();
+};
+$("tokenClear").onclick = () => { localStorage.removeItem(tokenKey); $("tokenInput").value = ""; $("modalBg").style.display = "none"; load(); };
+$("modalBg").onclick = e => { if (e.target === $("modalBg")) $("modalBg").style.display = "none"; };
+
+load();
+</script>
+</body>
+</html>
